@@ -1,33 +1,30 @@
-"""Extract image outputs from notebook cell data and save to temp files."""
+"""Extract image data from notebook cell outputs."""
 
 from __future__ import annotations
 
-import base64
 import logging
-from pathlib import Path
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
 _IMAGE_MIME_TYPES = ("image/png", "image/jpeg")
-_MIME_EXT = {"image/png": ".png", "image/jpeg": ".jpg"}
-_BASE_DIR = Path("/tmp/notebook-agent")
 
 
-def extract_cell_images(
-    notebook_path: str,
-    cell_index: int,
-    outputs: list[dict],
-) -> list[str]:
-    """Extract base64-encoded images from cell outputs and save to disk.
+@dataclass
+class CellImage:
+    """A single image extracted from cell output."""
 
-    Returns a list of saved file paths (empty if no images found).
+    mime_type: str
+    data_b64: str  # base64-encoded image data (ready for MCP ImageContent)
+
+
+def extract_cell_images(outputs: list[dict]) -> list[CellImage]:
+    """Extract base64-encoded images from cell outputs.
+
+    Returns a list of CellImage (empty if no images found).
+    The data_b64 field contains clean base64 ready for MCP ImageContent.
     """
-    notebook_stem = Path(notebook_path).stem
-    dest_dir = _BASE_DIR / notebook_stem
-    dest_dir.mkdir(parents=True, exist_ok=True)
-
-    saved: list[str] = []
-    img_counter = 0
+    images: list[CellImage] = []
 
     for output in outputs:
         data = output.get("data", {})
@@ -35,21 +32,11 @@ def extract_cell_images(
             if mime not in data:
                 continue
             raw = data[mime]
-            # nbformat stores base64 as a string (possibly with newlines)
-            if isinstance(raw, str):
-                img_bytes = base64.b64decode(raw)
-            elif isinstance(raw, bytes):
-                img_bytes = raw
-            else:
+            if not isinstance(raw, str):
                 continue
+            # nbformat may store base64 with embedded newlines — strip them
+            clean_b64 = raw.replace("\n", "")
+            images.append(CellImage(mime_type=mime, data_b64=clean_b64))
+            logger.debug("Extracted %s image from cell output", mime)
 
-            ext = _MIME_EXT[mime]
-            filename = f"cell_{cell_index}_{img_counter}{ext}"
-            filepath = dest_dir / filename
-            filepath.write_bytes(img_bytes)
-
-            saved.append(str(filepath))
-            img_counter += 1
-            logger.debug("Saved image: %s", filepath)
-
-    return saved
+    return images

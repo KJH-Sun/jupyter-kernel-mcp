@@ -130,16 +130,15 @@ If a cell might take a long time (data loading, training, etc.):
 ### Rule 10: Viewing Image Outputs
 
 Cell outputs may contain images (matplotlib charts, seaborn plots, etc.) stored as base64.
-To inspect them:
 
-1. Call `get-cell-output --path <path> --cell <n>` to extract images.
-2. The response includes `image_paths` — a list of saved PNG/JPEG file paths.
-3. Use the `Read` tool to open each image path and view it visually.
+**MCP tool**: `get_cell_output` returns images inline — you can see them directly in the response. No extra step needed.
+
+**CLI**: `get-cell-output` saves images to `/tmp/notebook-agent/` and returns file paths.
 
 ```bash
+# CLI usage
 python cli/notebook_agent.py get-cell-output --path notebook.ipynb --cell 3
 # → {"image_paths": ["/tmp/notebook-agent/notebook/cell_3_0.png"]}
-# Then use Read to view the image file
 ```
 
 ### Rule 11: Multiple Cell Execution

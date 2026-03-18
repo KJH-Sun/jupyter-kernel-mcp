@@ -165,19 +165,19 @@ class NotebookRuntimeService:
     # ------------------------------------------------------------------
 
     def get_cell_output(self, path: str, cell_index: int) -> dict:
-        """Read existing outputs from a cell and extract any images to disk.
+        """Read existing outputs from a cell and extract image data.
 
-        Returns a dict with ``outputs`` (raw output dicts) and
-        ``image_paths`` (list of saved image file paths).
+        Returns a dict with ``outputs`` (CellOutput models),
+        and ``images`` (list of CellImage with mime_type and data_b64).
         """
         nb = self.repo.load(path)
         cell = self.repo.get_cell(nb, cell_index)
         raw_outputs: list[dict] = list(cell.get("outputs", []))
-        image_paths = extract_cell_images(path, cell_index, raw_outputs)
+        images = extract_cell_images(raw_outputs)
         return {
             "cell_index": cell_index,
             "outputs": outputs_to_models(raw_outputs),
-            "image_paths": image_paths,
+            "images": images,
         }
 
     # ------------------------------------------------------------------

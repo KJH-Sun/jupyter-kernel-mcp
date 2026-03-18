@@ -137,14 +137,27 @@ def run_until(path: str, cell: int, mode: str, timeout: float | None):
 @click.option("--path", required=True, help="Path to .ipynb file")
 @click.option("--cell", required=True, type=int, help="0-based cell index")
 def get_cell_output(path: str, cell: int):
-    """Read existing outputs from a cell and extract images to temp files."""
+    """Read existing outputs from a cell and save images to temp files."""
+    import base64
+    from pathlib import Path as P
+
     try:
         result = _get_service().get_cell_output(path=path, cell_index=cell)
+        # CLI: save images to /tmp for viewing
+        image_paths: list[str] = []
+        if result["images"]:
+            dest_dir = P("/tmp/notebook-agent") / P(path).stem
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            for i, img in enumerate(result["images"]):
+                ext = ".png" if "png" in img.mime_type else ".jpg"
+                fp = dest_dir / f"cell_{cell}_{i}{ext}"
+                fp.write_bytes(base64.b64decode(img.data_b64))
+                image_paths.append(str(fp))
         _output({
             "status": "ok",
             "cell_index": result["cell_index"],
             "outputs": [o.model_dump() for o in result["outputs"]],
-            "image_paths": result["image_paths"],
+            "image_paths": image_paths,
         })
     except NotebookError as exc:
         _error_output(str(exc))

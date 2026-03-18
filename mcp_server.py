@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from mcp import types
 from mcp.server.fastmcp import FastMCP
 
 from app.domain.errors import NotebookError
@@ -21,8 +22,8 @@ Notebook execution runtime for AI agents.
 
 IMPORTANT — Inspecting image outputs:
 - Cell outputs may contain images (matplotlib, seaborn, PIL, etc.) stored as base64 in the .ipynb file.
-- You CANNOT read base64 image data directly. You MUST call `get_cell_output` to extract images to temp files.
-- After `get_cell_output`, open the returned `image_paths` with the Read tool to view them.
+- You CANNOT read base64 image data directly. You MUST call `get_cell_output` to retrieve images.
+- `get_cell_output` returns images inline — no extra file reading step needed.
 - When a user asks to "analyze a chart", "show the plot", or "check the output", ALWAYS use `get_cell_output` first.
 - Do NOT attempt to parse .ipynb JSON or decode base64 manually. Use the tool.
 """,
@@ -163,12 +164,12 @@ def shutdown_idle(max_idle_seconds: float = 1800) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_cell_output(path: str, cell_index: int) -> dict[str, Any]:
-    """Read existing outputs from a cell and extract any images to temp files.
+def get_cell_output(path: str, cell_index: int) -> types.TextContent | list:
+    """Read existing outputs from a cell. Images are returned inline — no extra step needed.
 
     Use this to inspect cell outputs — especially images (matplotlib charts, etc.)
-    that are stored as base64 in the .ipynb file. Extracted images are saved under
-    /tmp/notebook-agent/ and their paths are returned so you can open them with Read.
+    that are stored as base64 in the .ipynb file. Images are returned directly
+    as image content so you can see them immediately.
 
     Args:
         path: Absolute path to the .ipynb file.
@@ -176,11 +177,26 @@ def get_cell_output(path: str, cell_index: int) -> dict[str, Any]:
     """
     try:
         result = _service.get_cell_output(path=path, cell_index=cell_index)
-        return _ok({
+        content: list = []
+
+        # Text summary of outputs
+        text_data = {
+            "status": "ok",
             "cell_index": result["cell_index"],
             "outputs": [o.model_dump() for o in result["outputs"]],
-            "image_paths": result["image_paths"],
-        })
+            "image_count": len(result["images"]),
+        }
+        content.append(types.TextContent(type="text", text=str(text_data)))
+
+        # Inline images
+        for img in result["images"]:
+            content.append(types.ImageContent(
+                type="image",
+                data=img.data_b64,
+                mimeType=img.mime_type,
+            ))
+
+        return content
     except NotebookError as e:
         return _err(str(e))
 
