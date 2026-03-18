@@ -6,7 +6,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from mcp import types
 from mcp.server.fastmcp import FastMCP
 
 from app.domain.errors import NotebookError
@@ -23,13 +22,16 @@ Notebook execution runtime for AI agents.
 IMPORTANT — Inspecting image outputs:
 - Cell outputs may contain images (matplotlib, seaborn, PIL, etc.) stored as base64 in the .ipynb file.
 - You CANNOT read base64 image data directly. You MUST call `get_cell_output` to retrieve images.
-- `get_cell_output` returns images inline — no extra file reading step needed.
+- `get_cell_output` returns resource URIs for each image. Read the resource to view the image.
 - When a user asks to "analyze a chart", "show the plot", or "check the output", ALWAYS use `get_cell_output` first.
 - Do NOT attempt to parse .ipynb JSON or decode base64 manually. Use the tool.
 """,
 )
 
 _service = NotebookRuntimeService()
+
+# In-memory image cache: URI key -> (mime_type, raw_bytes)
+_image_cache: dict[str, tuple[str, bytes]] = {}
 
 
 def _ok(data: dict[str, Any]) -> dict[str, Any]:
@@ -164,12 +166,12 @@ def shutdown_idle(max_idle_seconds: float = 1800) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_cell_output(path: str, cell_index: int) -> types.TextContent | list:
-    """Read existing outputs from a cell. Images are returned inline — no extra step needed.
+def get_cell_output(path: str, cell_index: int) -> dict[str, Any]:
+    """Read existing outputs from a cell. Returns resource URIs for any images.
 
     Use this to inspect cell outputs — especially images (matplotlib charts, etc.)
-    that are stored as base64 in the .ipynb file. Images are returned directly
-    as image content so you can see them immediately.
+    that are stored as base64 in the .ipynb file. Each image is available as an
+    MCP resource — read the returned URIs to view the images.
 
     Args:
         path: Absolute path to the .ipynb file.
@@ -177,28 +179,32 @@ def get_cell_output(path: str, cell_index: int) -> types.TextContent | list:
     """
     try:
         result = _service.get_cell_output(path=path, cell_index=cell_index)
-        content: list = []
 
-        # Text summary of outputs
-        text_data = {
-            "status": "ok",
+        # Cache images and build resource URIs
+        image_uris: list[str] = []
+        for i, img in enumerate(result["images"]):
+            import base64
+            uri = f"cell-image://{cell_index}/{i}"
+            _image_cache[uri] = (img.mime_type, base64.b64decode(img.data_b64))
+            image_uris.append(uri)
+
+        return _ok({
             "cell_index": result["cell_index"],
             "outputs": [o.model_dump() for o in result["outputs"]],
-            "image_count": len(result["images"]),
-        }
-        content.append(types.TextContent(type="text", text=str(text_data)))
-
-        # Inline images
-        for img in result["images"]:
-            content.append(types.ImageContent(
-                type="image",
-                data=img.data_b64,
-                mimeType=img.mime_type,
-            ))
-
-        return content
+            "image_uris": image_uris,
+        })
     except NotebookError as e:
         return _err(str(e))
+
+
+@mcp.resource("cell-image://{cell_index}/{image_index}", mime_type="image/png")
+def get_cell_image(cell_index: str, image_index: str) -> bytes:
+    """Return a cached cell output image."""
+    uri = f"cell-image://{cell_index}/{image_index}"
+    if uri not in _image_cache:
+        return b""
+    _mime, data = _image_cache[uri]
+    return data
 
 
 @mcp.tool()

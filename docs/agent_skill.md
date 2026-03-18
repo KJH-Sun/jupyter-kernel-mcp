@@ -131,12 +131,18 @@ If a cell might take a long time (data loading, training, etc.):
 
 Cell outputs may contain images (matplotlib charts, seaborn plots, etc.) stored as base64.
 
-**MCP tool**: `get_cell_output` returns images inline — you can see them directly in the response. No extra step needed.
+**MCP tool**: `get_cell_output` returns `image_uris` — read the MCP resource URI to view the image.
+
+```
+1. get_cell_output(path, cell_index)
+   → {"image_uris": ["cell-image://3/0"]}
+2. Read MCP resource "cell-image://3/0"
+   → image is displayed
+```
 
 **CLI**: `get-cell-output` saves images to `/tmp/notebook-agent/` and returns file paths.
 
 ```bash
-# CLI usage
 python cli/notebook_agent.py get-cell-output --path notebook.ipynb --cell 3
 # → {"image_paths": ["/tmp/notebook-agent/notebook/cell_3_0.png"]}
 ```
