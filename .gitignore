@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Project-specific: local data & notebooks
+data/
+models/
+*.ipynb
+
+# Local config
+.mcp.json
+requirements.txt
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# pytest / coverage
+.pytest_cache/
+htmlcov/
+.coverage
