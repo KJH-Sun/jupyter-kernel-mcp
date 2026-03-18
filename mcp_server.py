@@ -14,7 +14,19 @@ from app.services.notebook_runtime_service import NotebookRuntimeService
 
 logging.basicConfig(level=logging.WARNING)
 
-mcp = FastMCP("notebook-runtime")
+mcp = FastMCP(
+    "notebook-runtime",
+    instructions="""\
+Notebook execution runtime for AI agents.
+
+IMPORTANT — Inspecting image outputs:
+- Cell outputs may contain images (matplotlib, seaborn, PIL, etc.) stored as base64 in the .ipynb file.
+- You CANNOT read base64 image data directly. You MUST call `get_cell_output` to extract images to temp files.
+- After `get_cell_output`, open the returned `image_paths` with the Read tool to view them.
+- When a user asks to "analyze a chart", "show the plot", or "check the output", ALWAYS use `get_cell_output` first.
+- Do NOT attempt to parse .ipynb JSON or decode base64 manually. Use the tool.
+""",
+)
 
 _service = NotebookRuntimeService()
 
@@ -65,6 +77,7 @@ def run_cell(
     """Run a single notebook cell by 0-based index.
 
     The cell must be a code cell. Outputs are persisted into the .ipynb file.
+    If the cell produces image output (plots, charts), use `get_cell_output` afterwards to extract and view images.
 
     Args:
         path: Absolute path to the .ipynb file.
@@ -92,6 +105,8 @@ def run_until(
     timeout: float | None = None,
 ) -> dict[str, Any]:
     """Run all code cells from the beginning up to and including the target cell.
+
+    If any cell produces image output (plots, charts), use `get_cell_output` afterwards to extract and view images.
 
     Args:
         path: Absolute path to the .ipynb file.
