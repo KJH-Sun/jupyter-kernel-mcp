@@ -8,10 +8,10 @@ A local notebook execution system that lets AI agents run Jupyter notebook cells
 
 ```bash
 # GitHub에서 직접 설치
-pip install git+https://github.com/<owner>/notebook-agent.git
+pip install git+https://github.com/KJH-Sun/jupyter-kernel-mcp.git
 
 # 또는 로컬 클론 후 설치
-git clone https://github.com/<owner>/notebook-agent.git
+git clone https://github.com/KJH-Sun/jupyter-kernel-mcp.git
 cd notebook-agent
 pip install -e ".[dev]"
 ```
