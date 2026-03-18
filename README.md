@@ -16,6 +16,15 @@ cd notebook-agent
 pip install -e ".[dev]"
 ```
 
+### Update
+
+```bash
+pip install --no-cache-dir --force-reinstall git+https://github.com/KJH-Sun/jupyter-kernel-mcp.git
+```
+
+> 버전 번호가 동일하면 pip이 캐시를 재사용하므로 `--no-cache-dir --force-reinstall` 플래그가 필요합니다.
+> 설치 후 Claude Code에서 MCP 서버를 재시작해야 변경사항이 반영됩니다.
+
 ### Claude Code MCP 서버로 사용
 
 설치 후 프로젝트의 `.mcp.json`에 추가:
