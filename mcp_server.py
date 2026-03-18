@@ -148,6 +148,29 @@ def shutdown_idle(max_idle_seconds: float = 1800) -> dict[str, Any]:
 
 
 @mcp.tool()
+def get_cell_output(path: str, cell_index: int) -> dict[str, Any]:
+    """Read existing outputs from a cell and extract any images to temp files.
+
+    Use this to inspect cell outputs — especially images (matplotlib charts, etc.)
+    that are stored as base64 in the .ipynb file. Extracted images are saved under
+    /tmp/notebook-agent/ and their paths are returned so you can open them with Read.
+
+    Args:
+        path: Absolute path to the .ipynb file.
+        cell_index: 0-based cell index.
+    """
+    try:
+        result = _service.get_cell_output(path=path, cell_index=cell_index)
+        return _ok({
+            "cell_index": result["cell_index"],
+            "outputs": [o.model_dump() for o in result["outputs"]],
+            "image_paths": result["image_paths"],
+        })
+    except NotebookError as e:
+        return _err(str(e))
+
+
+@mcp.tool()
 def save_notebook(path: str) -> dict[str, Any]:
     """Explicitly save a notebook file.
 

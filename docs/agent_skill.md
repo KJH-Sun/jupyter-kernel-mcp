@@ -25,6 +25,7 @@ All commands are invoked via `python cli/notebook_agent.py <command> [options]`.
 | `restart-kernel --path <path>` | Restart the kernel (clears all state) |
 | `sessions` | List all active kernel sessions |
 | `shutdown-idle [--max-idle N]` | Shutdown kernels idle > N seconds |
+| `get-cell-output --path <path> --cell <n>` | Read cell outputs and extract images |
 | `save --path <path>` | Force-save the notebook file |
 
 ---
@@ -126,7 +127,22 @@ If a cell might take a long time (data loading, training, etc.):
 - Use `--timeout` to extend the default (120s): `--timeout 600`
 - Inform the user that execution is in progress
 
-### Rule 10: Multiple Cell Execution
+### Rule 10: Viewing Image Outputs
+
+Cell outputs may contain images (matplotlib charts, seaborn plots, etc.) stored as base64.
+To inspect them:
+
+1. Call `get-cell-output --path <path> --cell <n>` to extract images.
+2. The response includes `image_paths` — a list of saved PNG/JPEG file paths.
+3. Use the `Read` tool to open each image path and view it visually.
+
+```bash
+python cli/notebook_agent.py get-cell-output --path notebook.ipynb --cell 3
+# → {"image_paths": ["/tmp/notebook-agent/notebook/cell_3_0.png"]}
+# Then use Read to view the image file
+```
+
+### Rule 11: Multiple Cell Execution
 
 If the user says "run cells 3 through 7":
 ```bash

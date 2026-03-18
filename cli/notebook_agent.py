@@ -133,6 +133,23 @@ def run_until(path: str, cell: int, mode: str, timeout: float | None):
         _error_output(str(exc))
 
 
+@cli.command("get-cell-output")
+@click.option("--path", required=True, help="Path to .ipynb file")
+@click.option("--cell", required=True, type=int, help="0-based cell index")
+def get_cell_output(path: str, cell: int):
+    """Read existing outputs from a cell and extract images to temp files."""
+    try:
+        result = _get_service().get_cell_output(path=path, cell_index=cell)
+        _output({
+            "status": "ok",
+            "cell_index": result["cell_index"],
+            "outputs": [o.model_dump() for o in result["outputs"]],
+            "image_paths": result["image_paths"],
+        })
+    except NotebookError as exc:
+        _error_output(str(exc))
+
+
 @cli.command("restart-kernel")
 @click.option("--path", required=True, help="Path to .ipynb file")
 def restart_kernel(path: str):

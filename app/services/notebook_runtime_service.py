@@ -16,6 +16,7 @@ from app.domain.models import (
 from app.infra.file_lock import FileLockRegistry
 from app.infra.notebook_repository import NotebookRepository
 from app.services.cell_executor import CellExecutor
+from app.services.image_extractor import extract_cell_images
 from app.services.kernel_session_registry import KernelSessionRegistry
 from app.services.output_serializer import outputs_to_models, serialize_outputs
 
@@ -158,6 +159,26 @@ class NotebookRuntimeService:
             if out.get("output_type") == "error":
                 return f"{out.get('ename', '')}: {out.get('evalue', '')}"
         return None
+
+    # ------------------------------------------------------------------
+    # Output inspection
+    # ------------------------------------------------------------------
+
+    def get_cell_output(self, path: str, cell_index: int) -> dict:
+        """Read existing outputs from a cell and extract any images to disk.
+
+        Returns a dict with ``outputs`` (raw output dicts) and
+        ``image_paths`` (list of saved image file paths).
+        """
+        nb = self.repo.load(path)
+        cell = self.repo.get_cell(nb, cell_index)
+        raw_outputs: list[dict] = list(cell.get("outputs", []))
+        image_paths = extract_cell_images(path, cell_index, raw_outputs)
+        return {
+            "cell_index": cell_index,
+            "outputs": outputs_to_models(raw_outputs),
+            "image_paths": image_paths,
+        }
 
     # ------------------------------------------------------------------
     # Kernel management
